@@ -180,6 +180,7 @@
       <div class="logo-text">Doc<span>AI</span></div>
     </div>
     <div class="header-right">
+      <button class="theme-toggle-btn" onclick="toggleTheme()" title="Toggle Theme" id="theme-toggle-btn">🌓</button>
       <div class="status-badge">
         <span class="status-dot" id="status-dot"></span>
         <span id="status-text">Ready</span>
@@ -286,6 +287,7 @@
       <div class="history-panel" id="history-panel" style="display:none">
         <div class="history-header">
           <h3>📂 Your Documents</h3>
+          <button class="clear-all-btn" id="history-clear-btn" onclick="confirmClearAllHistory()" style="display: none;">🧹 Clear All</button>
         </div>
         <div class="history-list" id="history-list">
           <div class="history-empty">
@@ -315,16 +317,31 @@
 
       <!-- Analysis -->
       <div id="analysis-screen">
-        <div class="doc-header" id="doc-header">
-          <div><span class="doc-type-badge general" id="doc-type-badge">—</span></div>
-          <div class="doc-header-info">
-            <div class="doc-filename" id="doc-filename">—</div>
-            <div class="doc-meta-row" id="doc-meta-row">—</div>
+        <div class="doc-header" id="doc-header" style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div><span class="doc-type-badge general" id="doc-type-badge">—</span></div>
+            <div class="doc-header-info">
+              <div class="doc-filename" id="doc-filename">—</div>
+              <div class="doc-meta-row" id="doc-meta-row">—</div>
+            </div>
+          </div>
+          <!-- Export Dropdown -->
+          <div class="export-dropdown-container" style="position: relative;" id="export-dropdown-container">
+            <button class="signin-btn" style="padding: 6px 14px; font-size: 0.8rem; display: flex; align-items: center; gap: 6px; user-select: none;" onclick="toggleExportMenu(event)">
+              <span>📥</span> Export <span>▼</span>
+            </button>
+            <div class="user-dropdown-menu" id="export-dropdown-menu" style="display: none; width: 160px; margin-top: 5px; right: 0;">
+              <button class="dropdown-item" onclick="exportAsTXT()">📄 Export as TXT</button>
+              <button class="dropdown-item" onclick="exportAsPDF()">🖨️ Export as PDF</button>
+            </div>
           </div>
         </div>
         <div class="cards-grid full" style="margin-bottom:16px">
           <div class="card" id="summary-card">
-            <div class="card-title"><div class="ct-icon">📝</div>Executive Summary</div>
+            <div class="card-title" style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; align-items:center; gap:8px;"><div class="ct-icon">📝</div>Executive Summary</div>
+              <button class="icon-action-btn" id="copy-summary-btn" onclick="copySummary()" title="Copy Summary">📋</button>
+            </div>
             <div class="summary-text" id="summary-text"></div>
           </div>
         </div>

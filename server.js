@@ -547,6 +547,17 @@ app.get('/api/history/:id', authRequired, async (req, res) => {
   }
 });
 
+// DELETE /api/history — wipe all history for user
+app.delete('/api/history', authRequired, async (req, res) => {
+  try {
+    await pool.query('DELETE FROM docai_documents WHERE user_id=$1', [req.user.id]);
+    res.json({ success: true, message: 'All history cleared successfully.' });
+  } catch (err) {
+    console.error('Clear history error:', err);
+    res.status(500).json({ error: 'Failed to clear history.' });
+  }
+});
+
 // DELETE /api/history/:id
 app.delete('/api/history/:id', authRequired, async (req, res) => {
   try {
