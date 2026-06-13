@@ -121,6 +121,57 @@
   </div>
 </div>
 
+<!-- ── Profile Settings Modal ── -->
+<div class="modal-overlay hidden" id="profile-modal">
+  <div class="auth-card">
+    <div class="auth-card-header" style="position: relative;">
+      <button class="modal-close-btn" onclick="closeProfileModal()" style="position: absolute; right: 15px; top: 15px; background: none; border: none; color: var(--text-3); font-size: 1.2rem; cursor: pointer;">✕</button>
+      <div class="auth-logo" id="profile-modal-icon">⚙️</div>
+      <h1 class="auth-title" id="profile-modal-title">Account Settings</h1>
+      <p class="auth-subtitle" id="profile-modal-subtitle">Modify your account settings</p>
+    </div>
+
+    <div class="auth-form">
+      <!-- Change Name Form -->
+      <div id="change-name-form" style="display:none">
+        <div class="form-group">
+          <label for="change-name-input">New Full Name</label>
+          <input class="form-input" type="text" id="change-name-input" placeholder="New Name" />
+          <div class="form-error" id="change-name-error"></div>
+        </div>
+        <button class="auth-submit-btn" onclick="handleChangeNameSubmit()">Save Changes</button>
+      </div>
+
+      <!-- Change Password Form -->
+      <div id="change-password-form" style="display:none">
+        <div class="form-group">
+          <label for="change-pass-current">Current Password</label>
+          <input class="form-input" type="password" id="change-pass-current" placeholder="Current password" />
+        </div>
+        <div class="form-group">
+          <label for="change-pass-new">New Password <span style="color:var(--text-3);font-weight:400">(8+ chars, A-Z, special char)</span></label>
+          <input class="form-input" type="password" id="change-pass-new" placeholder="Create a new password" />
+          <div class="form-error" id="change-pass-error"></div>
+        </div>
+        <button class="auth-submit-btn" onclick="handleChangePasswordSubmit()">Update Password</button>
+      </div>
+
+      <!-- Delete Account Form -->
+      <div id="delete-account-form" style="display:none">
+        <p class="form-info-text" style="color: var(--red); font-size: 13px; font-weight: 500; text-align: center; margin-bottom: 12px; line-height: 1.4;">
+          ⚠️ WARNING: This action is permanent! All your document history and analysis results will be deleted forever.
+        </p>
+        <div class="form-group">
+          <label for="delete-account-password">Enter Password to Confirm</label>
+          <input class="form-input" type="password" id="delete-account-password" placeholder="Confirm password" />
+          <div class="form-error" id="delete-account-error"></div>
+        </div>
+        <button class="auth-submit-btn" style="background: linear-gradient(135deg, var(--red), #b91c1c); box-shadow: 0 4px 20px rgba(239,68,68,.4);" onclick="handleDeleteAccountSubmit()">Permanently Delete Account</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ── Main App ── -->
 <div id="app">
   <header>
@@ -138,10 +189,26 @@
         <button class="signin-btn" onclick="showAuthModal()">Sign In</button>
       </div>
       <!-- Logged-in state -->
-      <div class="user-area" id="header-user" style="display:none">
-        <div class="user-avatar" id="user-avatar" title="Your account">?</div>
-        <span class="user-name" id="user-name-display"></span>
-        <button class="signout-btn" onclick="handleSignOut()">Sign Out</button>
+      <div class="user-area" id="header-user" style="display:none; position: relative;">
+        <div class="user-profile-btn" onclick="toggleUserMenu(event)" style="display: flex; align-items: center; gap: 8px; cursor: pointer; user-select: none;">
+          <div class="user-avatar" id="user-avatar">?</div>
+          <span class="user-name" id="user-name-display"></span>
+          <span style="font-size: 8px; color: var(--text-2); transition: transform 0.2s;" id="menu-arrow-icon">▼</span>
+        </div>
+        
+        <!-- User Dropdown Menu -->
+        <div class="user-dropdown-menu" id="user-dropdown-menu" style="display: none;">
+          <div class="dropdown-header">
+            <p class="dropdown-email" id="dropdown-user-email">email@domain.com</p>
+            <p class="dropdown-meta" id="dropdown-user-joined">Member since: -</p>
+          </div>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item" onclick="openProfileSettingsModal('name')">✏️ Change Name</button>
+          <button class="dropdown-item" onclick="openProfileSettingsModal('password')">🔑 Change Password</button>
+          <button class="dropdown-item delete" onclick="openProfileSettingsModal('delete')">🗑️ Delete Account</button>
+          <div class="dropdown-divider"></div>
+          <button class="dropdown-item" onclick="handleSignOut()">🚪 Sign Out</button>
+        </div>
       </div>
     </div>
   </header>
