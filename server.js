@@ -422,7 +422,7 @@ app.post('/api/analyze', authOptional, async (req, res) => {
   try {
     const { text, filename = 'document', model = 'gemini-2.5-flash' } = req.body;
 
-    if (!text || text.trim().length < 50)
+    if (!text || text.trim().length < 5)
       return res.status(400).json({ error: 'Document text is too short or empty.' });
 
     const truncated    = text.slice(0, 2000000);

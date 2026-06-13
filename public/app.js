@@ -1175,7 +1175,11 @@ function resetFile() {
 analyzeBtn.addEventListener('click', runAnalysis);
 
 async function runAnalysis() {
-  if (!docText || isAnalyzing) return;
+  if (isAnalyzing) return;
+  if (!docText || !docText.trim()) {
+    showToast('This document contains no readable text. Scanned or image-only documents cannot be analyzed.', 'error');
+    return;
+  }
   isAnalyzing = true;
 
   welcomeScreen.style.display  = 'none';
