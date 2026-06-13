@@ -573,3 +573,40 @@ body.light-theme .sidebar {
   background: rgba(241, 245, 249, 0.5);
 }
 
+/* ─── Premium Custom Cursor ─────────────────────────────────────────────────── */
+.custom-cursor {
+  position: fixed; top: 0; left: 0;
+  width: 24px; height: 24px;
+  border: 1.5px solid var(--violet-l);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99999;
+  transition: width 0.2s, height 0.2s, background-color 0.2s, border-color 0.2s;
+  will-change: transform;
+}
+.custom-cursor.hover {
+  width: 38px; height: 38px;
+  border-color: var(--cyan-l);
+  background-color: rgba(6, 182, 212, 0.08);
+}
+.custom-cursor-dot {
+  position: fixed; top: 0; left: 0;
+  width: 6px; height: 6px;
+  background-color: var(--cyan);
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 99999;
+  transition: width 0.2s, height 0.2s, background-color 0.2s;
+  will-change: transform;
+}
+.custom-cursor-dot.hover {
+  width: 8px; height: 8px;
+  background-color: var(--violet-l);
+}
+
+@media (pointer: fine) {
+  body, button, a, select, textarea, input, .upload-zone, .history-item {
+    cursor: none !important;
+  }
+}
+
