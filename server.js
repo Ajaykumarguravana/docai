@@ -77,6 +77,7 @@ async function initDB() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
+  await pool.query('ALTER TABLE docai_users ADD COLUMN IF NOT EXISTS session_version TEXT');
   await pool.query(`
     CREATE TABLE IF NOT EXISTS docai_documents (
       id         SERIAL PRIMARY KEY,
@@ -105,22 +106,36 @@ async function initDB() {
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
 // ─── Auth Middleware ──────────────────────────────────────────────────────────
-function authRequired(req, res, next) {
+async function authRequired(req, res, next) {
   const header = req.headers.authorization;
   if (!header || !header.startsWith('Bearer '))
     return res.status(401).json({ error: 'Authentication required.' });
   try {
-    req.user = jwt.verify(header.split(' ')[1], JWT_SECRET);
+    const decoded = jwt.verify(header.split(' ')[1], JWT_SECRET);
+    
+    // Validate session version
+    const userRes = await pool.query('SELECT session_version FROM docai_users WHERE id=$1', [decoded.id]);
+    if (!userRes.rows.length || userRes.rows[0].session_version !== decoded.session_version) {
+      return res.status(401).json({ error: 'Logged in elsewhere. Session expired.', code: 'SESSION_EXPIRED' });
+    }
+
+    req.user = decoded;
     next();
   } catch {
     res.status(401).json({ error: 'Invalid or expired token.' });
   }
 }
 
-function authOptional(req, res, next) {
+async function authOptional(req, res, next) {
   const header = req.headers.authorization;
   if (header && header.startsWith('Bearer ')) {
-    try { req.user = jwt.verify(header.split(' ')[1], JWT_SECRET); } catch {}
+    try {
+      const decoded = jwt.verify(header.split(' ')[1], JWT_SECRET);
+      const userRes = await pool.query('SELECT session_version FROM docai_users WHERE id=$1', [decoded.id]);
+      if (userRes.rows.length && userRes.rows[0].session_version === decoded.session_version) {
+        req.user = decoded;
+      }
+    } catch {}
   }
   next();
 }
@@ -197,12 +212,13 @@ app.post('/api/auth/register', async (req, res) => {
     await pool.query('DELETE FROM docai_otps WHERE email=$1 AND purpose=$2', [email.toLowerCase(), 'register']);
 
     const hash = await bcrypt.hash(password, 12);
+    const sessionVersion = Math.random().toString(36).substring(2, 15);
     const result = await pool.query(
-      'INSERT INTO docai_users (name, email, password) VALUES ($1,$2,$3) RETURNING id, name, email, created_at',
-      [name.trim(), email.toLowerCase(), hash]
+      'INSERT INTO docai_users (name, email, password, session_version) VALUES ($1,$2,$3,$4) RETURNING id, name, email, created_at',
+      [name.trim(), email.toLowerCase(), hash, sessionVersion]
     );
     const user = result.rows[0];
-    const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    const token = jwt.sign({ id: user.id, name: user.name, email: user.email, session_version: sessionVersion }, JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, created_at: user.created_at } });
   } catch (err) {
     console.error('Register error:', err);
@@ -304,7 +320,10 @@ app.post('/api/auth/login', async (req, res) => {
     const valid = await bcrypt.compare(password, user.password);
     if (!valid) return res.status(401).json({ error: 'Invalid email or password.' });
 
-    const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+    const sessionVersion = Math.random().toString(36).substring(2, 15);
+    await pool.query('UPDATE docai_users SET session_version=$1 WHERE id=$2', [sessionVersion, user.id]);
+
+    const token = jwt.sign({ id: user.id, name: user.name, email: user.email, session_version: sessionVersion }, JWT_SECRET, { expiresIn: '30d' });
     res.json({ token, user: { id: user.id, name: user.name, email: user.email, created_at: user.created_at } });
   } catch (err) {
     console.error('Login error:', err);

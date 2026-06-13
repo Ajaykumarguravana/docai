@@ -1394,6 +1394,30 @@ function escapeHtml(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// Global fetch interceptor to enforce single active session policy
+const originalFetch = window.fetch;
+window.fetch = async function(...args) {
+  const res = await originalFetch(...args);
+  if (res.status === 401 && authToken) {
+    const isMeRoute = args[0] && (args[0] === '/api/auth/me' || args[0].includes('/api/auth/me'));
+    try {
+      const clone = res.clone();
+      const data = await clone.json();
+      if (data.code === 'SESSION_EXPIRED') {
+        setLoggedOut();
+        showToast('Logged out: New login detected on another device.', 'error', 5000);
+        authModal.classList.remove('hidden');
+      }
+    } catch (e) {
+      if (!isMeRoute) {
+        setLoggedOut();
+        authModal.classList.remove('hidden');
+      }
+    }
+  }
+  return res;
+};
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════════════════════
