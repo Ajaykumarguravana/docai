@@ -203,7 +203,7 @@ app.post('/api/auth/register', async (req, res) => {
     );
     const user = result.rows[0];
     const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, created_at: user.created_at } });
   } catch (err) {
     console.error('Register error:', err);
     res.status(500).json({ error: 'Registration failed. Please try again.' });
@@ -305,7 +305,7 @@ app.post('/api/auth/login', async (req, res) => {
     if (!valid) return res.status(401).json({ error: 'Invalid email or password.' });
 
     const token = jwt.sign({ id: user.id, name: user.name, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
-    res.json({ token, user: { id: user.id, name: user.name, email: user.email } });
+    res.json({ token, user: { id: user.id, name: user.name, email: user.email, created_at: user.created_at } });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Login failed. Please try again.' });
