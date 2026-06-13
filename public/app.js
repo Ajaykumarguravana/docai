@@ -21,6 +21,8 @@ let isAnalyzing  = false;
 let isChatting   = false;
 let currentUser  = null;
 let authToken    = localStorage.getItem('docai_token') || null;
+let docImageBase64 = '';
+let docImageMimeType = '';
 
 // ═══════════════════════════════════════════════════════════════════════════════
 // DOM REFS
@@ -1111,13 +1113,17 @@ uploadZone.addEventListener('drop', e => { e.preventDefault(); uploadZone.classL
 fileInput.addEventListener('change', () => { if (fileInput.files[0]) handleFile(fileInput.files[0]); });
 removeFileBtn.addEventListener('click', resetFile);
 
-function getFileIcon(filename) { const ext = filename.split('.').pop().toLowerCase(); return ext === 'pdf' ? '📕' : ext === 'docx' ? '📘' : '📄'; }
+function getFileIcon(filename) {
+  const ext = filename.split('.').pop().toLowerCase();
+  return ext === 'pdf' ? '📕' : ext === 'docx' ? '📘' : ['png','jpg','jpeg','webp'].includes(ext) ? '🖼️' : '📄';
+}
 function formatBytes(b) { return b < 1024 ? b+' B' : b < 1048576 ? (b/1024).toFixed(1)+' KB' : (b/1048576).toFixed(1)+' MB'; }
 function getDocTypeClass(type) { if (!type) return 'general'; if (/legal/i.test(type)) return 'legal'; if (/financial/i.test(type)) return 'financial'; if (/research/i.test(type)) return 'research'; return 'general'; }
 
 async function handleFile(file) {
   const ext = file.name.split('.').pop().toLowerCase();
-  if (!['pdf','txt','docx'].includes(ext)) { alert('Please upload a PDF, DOCX, or TXT file.'); return; }
+  const isImage = ['png','jpg','jpeg','webp'].includes(ext);
+  if (!['pdf','txt','docx','png','jpg','jpeg','webp'].includes(ext)) { alert('Please upload a PDF, DOCX, TXT, or Image file.'); return; }
 
   docFilename = file.name;
   fileIconEl.textContent = getFileIcon(file.name);
@@ -1128,17 +1134,32 @@ async function handleFile(file) {
   setStatus('Parsing document…', 'var(--orange)');
 
   try {
-    if (ext === 'txt')        docText = await readTextFile(file);
-    else if (ext === 'pdf')   docText = await readPDF(file);
-    else if (ext === 'docx')  docText = await readDOCX(file);
-    const wordCount = docText.trim().split(/\s+/).length;
-    fileMetaEl.textContent = `${formatBytes(file.size)} · ~${wordCount.toLocaleString()} words`;
+    if (ext === 'txt') {
+      docText = await readTextFile(file);
+      docImageBase64 = ''; docImageMimeType = '';
+    } else if (ext === 'pdf') {
+      docText = await readPDF(file);
+      docImageBase64 = ''; docImageMimeType = '';
+    } else if (ext === 'docx') {
+      docText = await readDOCX(file);
+      docImageBase64 = ''; docImageMimeType = '';
+    } else if (isImage) {
+      const base64DataUrl = await readImageAsBase64(file);
+      docImageBase64 = base64DataUrl.split(',')[1];
+      docImageMimeType = file.type || `image/${ext}`;
+      docText = '';
+    }
+    const wordCount = isImage ? 0 : docText.trim().split(/\s+/).length;
+    fileMetaEl.textContent = isImage ? `${formatBytes(file.size)} · Image` : `${formatBytes(file.size)} · ~${wordCount.toLocaleString()} words`;
     setStatus('Ready to analyze', 'var(--green)');
   } catch (err) { setStatus('Parse error', 'var(--red)'); alert('Could not parse: ' + err.message); }
 }
 
 function readTextFile(file) {
   return new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result); r.onerror = rej; r.readAsText(file); });
+}
+function readImageAsBase64(file) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = e => res(e.target.result); r.onerror = rej; r.readAsDataURL(file); });
 }
 async function readPDF(file) {
   const ab = await file.arrayBuffer();
@@ -1157,6 +1178,7 @@ async function readDOCX(file) {
 
 function resetFile() {
   docText = ''; docFilename = ''; chatHistory = [];
+  docImageBase64 = ''; docImageMimeType = '';
   fileInput.value = '';
   fileInfoEl.classList.remove('visible');
   analyzeBtn.disabled = true;
@@ -1176,8 +1198,9 @@ analyzeBtn.addEventListener('click', runAnalysis);
 
 async function runAnalysis() {
   if (isAnalyzing) return;
-  if (!docText || !docText.trim()) {
-    showToast('This document contains no readable text. Scanned or image-only documents cannot be analyzed.', 'error');
+  const hasImage = !!docImageBase64;
+  if ((!docText || !docText.trim()) && !hasImage) {
+    showToast('This document contains no readable content. Please upload a valid document or image.', 'error');
     return;
   }
   isAnalyzing = true;
@@ -1190,15 +1213,23 @@ async function runAnalysis() {
   setStatus('Analyzing with AI…', 'var(--orange)');
 
   try {
+    const payload = { filename: docFilename, model: modelSelect.value };
+    if (hasImage) {
+      payload.image = docImageBase64;
+      payload.mimeType = docImageMimeType;
+    } else {
+      payload.text = docText;
+    }
+
     const res = await fetch('/api/analyze', {
       method: 'POST',
       headers: authHeaders(),
-      body: JSON.stringify({ text: docText, filename: docFilename, model: modelSelect.value }),
+      body: JSON.stringify(payload),
     });
     if (!res.ok) { const e = await res.json(); throw new Error(e.error || 'Server error'); }
 
     const data = await res.json();
-    const wordCount = docText.trim().split(/\s+/).length;
+    const wordCount = hasImage ? 0 : docText.trim().split(/\s+/).length;
     renderAnalysis(data, docFilename, wordCount);
 
     setStatus('Analysis complete', 'var(--green)');
@@ -1305,7 +1336,19 @@ async function sendChat() {
   chatHistory.push({ role:'user', text: msg });
 
   try {
-    const res  = await fetch('/api/chat', { method:'POST', headers: authHeaders(), body: JSON.stringify({ message:msg, docText, history:chatHistory.slice(-10), model:modelSelect.value }) });
+    const payload = {
+      message: msg,
+      history: chatHistory.slice(-10),
+      model: modelSelect.value
+    };
+    if (docImageBase64) {
+      payload.image = docImageBase64;
+      payload.mimeType = docImageMimeType;
+    } else {
+      payload.docText = docText;
+    }
+
+    const res  = await fetch('/api/chat', { method:'POST', headers: authHeaders(), body: JSON.stringify(payload) });
     const data = await res.json();
     if (!res.ok) throw new Error(data.error || 'Server error');
     thinkingEl.remove();

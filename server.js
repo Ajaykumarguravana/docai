@@ -420,16 +420,15 @@ app.delete('/api/auth/account', authRequired, async (req, res) => {
 
 app.post('/api/analyze', authOptional, async (req, res) => {
   try {
-    const { text, filename = 'document', model = 'gemini-2.5-flash' } = req.body;
+    const { text, image, mimeType, filename = 'document', model = 'gemini-2.5-flash' } = req.body;
 
-    if (!text || text.trim().length < 5)
+    if (!image && (!text || text.trim().length < 5))
       return res.status(400).json({ error: 'Document text is too short or empty.' });
 
-    const truncated    = text.slice(0, 2000000);
-    const wasTruncated = text.length > 2000000;
-    const wordCount    = text.trim().split(/\s+/).length;
+    const wasTruncated = !image && text.length > 2000000;
+    const wordCount    = image ? 0 : text.trim().split(/\s+/).length;
 
-    const prompt = `
+    const promptText = `
 You are an expert document analyst. Analyze the following document and respond with a JSON object ONLY (no markdown, no extra text) in this exact structure:
 
 {
@@ -456,13 +455,25 @@ You are an expert document analyst. Analyze the following document and respond w
 ${wasTruncated ? 'NOTE: The document was extremely large; only the first 2,000,000 characters were analyzed.' : ''}
 Document filename: ${filename}
 
---- DOCUMENT START ---
-${truncated}
---- DOCUMENT END ---
-
 Respond with JSON only.`;
 
-    const response = await ai.models.generateContent({ model, contents: prompt });
+    let contents;
+    if (image) {
+      contents = [
+        {
+          inlineData: {
+            data: image,
+            mimeType: mimeType || 'image/png'
+          }
+        },
+        promptText
+      ];
+    } else {
+      const truncated = text.slice(0, 2000000);
+      contents = `${promptText}\n\n--- DOCUMENT START ---\n${truncated}\n--- DOCUMENT END ---`;
+    }
+
+    const response = await ai.models.generateContent({ model, contents });
     const rawText  = response.text.trim();
     const jsonStr  = rawText.replace(/^```json\s*/i,'').replace(/^```\s*/i,'').replace(/```\s*$/i,'').trim();
 
@@ -494,15 +505,20 @@ Respond with JSON only.`;
 
 app.post('/api/chat', authOptional, async (req, res) => {
   try {
-    const { message, docText = '', history = [], model = 'gemini-2.5-flash' } = req.body;
+    const { message, docText = '', image, mimeType, history = [], model = 'gemini-2.5-flash' } = req.body;
     if (!message) return res.status(400).json({ error: 'Message is required.' });
 
-    const truncatedDoc = docText.slice(0, 25000);
     const contents = [
-      { role:'user',  parts:[{ text:`You are a helpful document analysis assistant. Answer questions about the document concisely and accurately.\n\n--- DOCUMENT ---\n${truncatedDoc}\n--- END ---` }] },
-      { role:'model', parts:[{ text:'Understood. I have read the document and am ready to answer your questions.' }] },
-      ...history.map(h => ({ role: h.role === 'ai' ? 'model' : h.role, parts:[{ text: h.text }] })),
-      { role:'user',  parts:[{ text: message }] },
+      {
+        role: 'user',
+        parts: [
+          ...(image ? [{ inlineData: { data: image, mimeType: mimeType || 'image/png' } }] : []),
+          { text: `You are a helpful document analysis assistant. Answer questions about the document/image concisely and accurately.${image ? '' : `\n\n--- DOCUMENT ---\n${docText.slice(0, 25000)}\n--- END ---`}` }
+        ]
+      },
+      { role: 'model', parts: [{ text: 'Understood. I have read the document/image and am ready to answer your questions.' }] },
+      ...history.map(h => ({ role: h.role === 'ai' ? 'model' : h.role, parts: [{ text: h.text }] })),
+      { role: 'user', parts: [{ text: message }] }
     ];
 
     const response = await ai.models.generateContent({ model, contents });
