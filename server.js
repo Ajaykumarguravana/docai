@@ -26,7 +26,7 @@ const pool = new Pool({
 // ─── Nodemailer SMTP Transporter ──────────────────────────────────────────────
 const transporter = nodemailer.createTransport({
   host: 'smtp-relay.brevo.com',
-  port: 587,
+  port: parseInt(process.env.SMTP_PORT || '587', 10),
   pool: true,
   maxConnections: 5,
   auth: {
