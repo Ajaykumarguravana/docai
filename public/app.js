@@ -1395,66 +1395,6 @@ function escapeHtml(str) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════════
-// CUSTOM CURSOR
-// ═══════════════════════════════════════════════════════════════════════════════
-(function initCustomCursor() {
-  if (window.matchMedia('(pointer: fine)').matches) {
-    const cursor = document.createElement('div');
-    cursor.className = 'custom-cursor';
-    const cursorDot = document.createElement('div');
-    cursorDot.className = 'custom-cursor-dot';
-    document.body.appendChild(cursor);
-    document.body.appendChild(cursorDot);
-
-    document.addEventListener('mousemove', (e) => {
-      cursor.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) translate3d(-50%, -50%, 0)`;
-      cursorDot.style.transform = `translate3d(${e.clientX}px, ${e.clientY}px, 0) translate3d(-50%, -50%, 0)`;
-    });
-
-    document.addEventListener('mouseover', (e) => {
-      const target = e.target;
-      if (
-        target.tagName === 'BUTTON' || 
-        target.tagName === 'A' || 
-        target.closest('.history-item') || 
-        target.closest('.user-profile-btn') || 
-        target.closest('.upload-zone') || 
-        target.closest('.chip') ||
-        target.closest('.dropdown-item')
-      ) {
-        cursor.classList.add('hover');
-        cursorDot.classList.add('hover');
-      }
-    });
-
-    document.addEventListener('mouseout', (e) => {
-      const target = e.target;
-      if (
-        target.tagName === 'BUTTON' || 
-        target.tagName === 'A' || 
-        target.closest('.history-item') || 
-        target.closest('.user-profile-btn') || 
-        target.closest('.upload-zone') || 
-        target.closest('.chip') ||
-        target.closest('.dropdown-item')
-      ) {
-        cursor.classList.remove('hover');
-        cursorDot.classList.remove('hover');
-      }
-    });
-
-    document.addEventListener('mouseleave', () => {
-      cursor.style.display = 'none';
-      cursorDot.style.display = 'none';
-    });
-    document.addEventListener('mouseenter', () => {
-      cursor.style.display = 'block';
-      cursorDot.style.display = 'block';
-    });
-  }
-})();
-
-// ═══════════════════════════════════════════════════════════════════════════════
 // INIT
 // ═══════════════════════════════════════════════════════════════════════════════
 restoreSession();
