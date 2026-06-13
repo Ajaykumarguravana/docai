@@ -65,6 +65,17 @@ function generateOTP() {
   return Math.floor(100000 + Math.random() * 900000).toString(); // 6 digits
 }
 
+function formatGeminiError(err) {
+  const errMsg = err.message || '';
+  if (errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('quota') || errMsg.includes('429') || err.status === 429) {
+    return 'Gemini API Quota Exceeded: You have reached the limit of the free tier. Please wait a moment before trying again.';
+  }
+  if (errMsg.includes('API_KEY_INVALID') || errMsg.includes('key')) {
+    return 'Gemini API Error: Invalid API key configuration. Please verify your environment keys.';
+  }
+  return errMsg || 'An error occurred during AI processing.';
+}
+
 
 // ─── Init Tables (docai_ prefix — won't touch existing tables) ────────────────
 async function initDB() {
@@ -517,7 +528,7 @@ Respond with JSON only.`;
     res.json({ ...analysis, historyId });
   } catch (err) {
     console.error('Analyze error:', err);
-    res.status(500).json({ error: err.message || 'Failed to analyze document.' });
+    res.status(500).json({ error: formatGeminiError(err) });
   }
 });
 
@@ -547,7 +558,7 @@ app.post('/api/chat', authOptional, async (req, res) => {
     res.json({ reply: response.text });
   } catch (err) {
     console.error('Chat error:', err);
-    res.status(500).json({ error: err.message || 'Failed to get response.' });
+    res.status(500).json({ error: formatGeminiError(err) });
   }
 });
 
