@@ -90,6 +90,11 @@ function setLoggedIn(user, token) {
   userAvatar.textContent      = getInitials(user.name);
   userNameDisplay.textContent = user.name.split(' ')[0];
 
+  // Populate dropdown header
+  document.getElementById('dropdown-user-email').textContent = user.email;
+  const joinedDate = user.created_at ? new Date(user.created_at).toLocaleDateString(undefined, { year: 'numeric', month: 'long' }) : 'Recent';
+  document.getElementById('dropdown-user-joined').textContent = `Member since: ${joinedDate}`;
+
   loadHistory();
 }
 
@@ -102,7 +107,172 @@ function setLoggedOut() {
   headerUser.style.display  = 'none';
   historyList.innerHTML     = `<div class="history-empty"><div class="history-empty-icon">📭</div><p>Sign in to see your document history.</p></div>`;
   historyBadge.style.display = 'none';
+  
+  // Close user dropdown if open
+  const menu = document.getElementById('user-dropdown-menu');
+  if (menu) menu.style.display = 'none';
+  const arrow = document.getElementById('menu-arrow-icon');
+  if (arrow) arrow.style.transform = 'rotate(0deg)';
 }
+
+// ─── USER DROPDOWN MENU ──────────────────────────────────────────────────────
+window.toggleUserMenu = function(e) {
+  if (e) e.stopPropagation();
+  const menu = document.getElementById('user-dropdown-menu');
+  const arrow = document.getElementById('menu-arrow-icon');
+  const isOpen = menu.style.display === 'block';
+  
+  menu.style.display = isOpen ? 'none' : 'block';
+  arrow.style.transform = isOpen ? 'rotate(0deg)' : 'rotate(180deg)';
+};
+
+// Close dropdown on click outside
+document.addEventListener('click', () => {
+  const menu = document.getElementById('user-dropdown-menu');
+  const arrow = document.getElementById('menu-arrow-icon');
+  if (menu && menu.style.display === 'block') {
+    menu.style.display = 'none';
+    arrow.style.transform = 'rotate(0deg)';
+  }
+});
+
+// ─── ACCOUNT SETTINGS MODAL ──────────────────────────────────────────────────
+window.openProfileSettingsModal = function(type) {
+  const modal = document.getElementById('profile-modal');
+  modal.classList.remove('hidden');
+
+  // Hide dropdown menu
+  const menu = document.getElementById('user-dropdown-menu');
+  if (menu) menu.style.display = 'none';
+  const arrow = document.getElementById('menu-arrow-icon');
+  if (arrow) arrow.style.transform = 'rotate(0deg)';
+
+  // Hide all sub-forms
+  document.getElementById('change-name-form').style.display = 'none';
+  document.getElementById('change-password-form').style.display = 'none';
+  document.getElementById('delete-account-form').style.display = 'none';
+
+  // Reset inputs and errors
+  document.getElementById('change-name-input').value = currentUser ? currentUser.name : '';
+  document.getElementById('change-pass-current').value = '';
+  document.getElementById('change-pass-new').value = '';
+  document.getElementById('delete-account-password').value = '';
+
+  document.getElementById('change-name-error').classList.remove('visible');
+  document.getElementById('change-pass-error').classList.remove('visible');
+  document.getElementById('delete-account-error').classList.remove('visible');
+
+  // Set titles dynamically
+  const iconEl = document.getElementById('profile-modal-icon');
+  const titleEl = document.getElementById('profile-modal-title');
+  const subtitleEl = document.getElementById('profile-modal-subtitle');
+
+  if (type === 'name') {
+    iconEl.textContent = '✏️';
+    titleEl.innerHTML = 'Change <span>Name</span>';
+    subtitleEl.textContent = 'Update your profile display username';
+    document.getElementById('change-name-form').style.display = 'block';
+  } else if (type === 'password') {
+    iconEl.textContent = '🔑';
+    titleEl.innerHTML = 'Change <span>Password</span>';
+    subtitleEl.textContent = 'Create a secure new password for your account';
+    document.getElementById('change-password-form').style.display = 'block';
+  } else if (type === 'delete') {
+    iconEl.textContent = '🗑️';
+    titleEl.innerHTML = 'Delete <span>Account</span>';
+    subtitleEl.textContent = 'Permanently delete your profile and all history';
+    document.getElementById('delete-account-form').style.display = 'block';
+  }
+};
+
+window.closeProfileModal = function() {
+  const modal = document.getElementById('profile-modal');
+  modal.classList.add('hidden');
+};
+
+window.handleChangeNameSubmit = async function() {
+  const name = document.getElementById('change-name-input').value.trim();
+  const errEl = document.getElementById('change-name-error');
+  if (!name) { errEl.textContent = 'Name is required.'; errEl.classList.add('visible'); return; }
+
+  try {
+    const res = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ name })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.classList.add('visible'); return; }
+
+    currentUser.name = data.user.name;
+    userAvatar.textContent = getInitials(currentUser.name);
+    userNameDisplay.textContent = currentUser.name.split(' ')[0];
+    
+    closeProfileModal();
+    showToast('Username updated successfully!', 'success');
+  } catch {
+    errEl.textContent = 'Network error. Please try again.';
+    errEl.classList.add('visible');
+  }
+};
+
+window.handleChangePasswordSubmit = async function() {
+  const currentPassword = document.getElementById('change-pass-current').value;
+  const newPassword = document.getElementById('change-pass-new').value;
+  const errEl = document.getElementById('change-pass-error');
+
+  errEl.classList.remove('visible');
+  if (!currentPassword || !newPassword) {
+    errEl.textContent = 'Both fields are required.';
+    errEl.classList.add('visible');
+    return;
+  }
+
+  const pwdErr = validatePassword(newPassword);
+  if (pwdErr) { errEl.textContent = pwdErr; errEl.classList.add('visible'); return; }
+
+  try {
+    const res = await fetch('/api/auth/password', {
+      method: 'PUT',
+      headers: authHeaders(),
+      body: JSON.stringify({ currentPassword, newPassword })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.classList.add('visible'); return; }
+
+    closeProfileModal();
+    showToast('Password updated successfully!', 'success');
+  } catch {
+    errEl.textContent = 'Network error. Please try again.';
+    errEl.classList.add('visible');
+  }
+};
+
+window.handleDeleteAccountSubmit = async function() {
+  const password = document.getElementById('delete-account-password').value;
+  const errEl = document.getElementById('delete-account-error');
+
+  errEl.classList.remove('visible');
+  if (!password) { errEl.textContent = 'Please enter your password to confirm.'; errEl.classList.add('visible'); return; }
+
+  try {
+    const res = await fetch('/api/auth/account', {
+      method: 'DELETE',
+      headers: authHeaders(),
+      body: JSON.stringify({ password })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.classList.add('visible'); return; }
+
+    closeProfileModal();
+    setLoggedOut();
+    showToast('Your account has been deleted permanently.', 'info');
+    authModal.classList.remove('hidden');
+  } catch {
+    errEl.textContent = 'Network error. Please try again.';
+    errEl.classList.add('visible');
+  }
+};
 
 window.showAuthModal = function() {
   authModal.classList.remove('hidden');
