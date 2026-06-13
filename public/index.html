@@ -78,6 +78,7 @@
           <div class="form-error" id="reg-otp-error"></div>
         </div>
         <button class="auth-submit-btn" onclick="handleVerifyRegisterOTP()">Verify & Create Account</button>
+        <button class="auth-guest-btn" id="reg-resend-btn" onclick="handleResendRegisterOTP()" style="margin-top: 10px; padding: 8px; font-size: 12px;" disabled>Resend Code (30s)</button>
         <div style="text-align:center; margin-top:15px;">
           <a href="#" class="auth-link-text" onclick="backToRegister(event)" style="font-size: 13px; color: var(--accent); text-decoration: none;">Back to details</a>
         </div>
@@ -106,6 +107,7 @@
             <div class="form-error" id="fp-reset-error"></div>
           </div>
           <button class="auth-submit-btn" onclick="handleResetPassword()">Reset Password</button>
+          <button class="auth-guest-btn" id="fp-resend-btn" onclick="handleResendResetOTP()" style="margin-top: 10px; padding: 8px; font-size: 12px;" disabled>Resend Code (30s)</button>
         </div>
         
         <div style="text-align:center; margin-top:15px;">

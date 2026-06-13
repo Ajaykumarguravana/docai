@@ -121,6 +121,47 @@ window.handleSignOut = function() {
   authModal.classList.remove('hidden');
 };
 
+let regTimer = null;
+let fpTimer = null;
+
+function clearResendTimers() {
+  if (regTimer) { clearInterval(regTimer); regTimer = null; }
+  if (fpTimer) { clearInterval(fpTimer); fpTimer = null; }
+  
+  const regBtn = document.getElementById('reg-resend-btn');
+  if (regBtn) { regBtn.disabled = true; regBtn.textContent = 'Resend Code (30s)'; }
+  const fpBtn = document.getElementById('fp-resend-btn');
+  if (fpBtn) { fpBtn.disabled = true; fpBtn.textContent = 'Resend Code (30s)'; }
+}
+
+function startResendTimer(buttonId, purpose) {
+  const btn = document.getElementById(buttonId);
+  if (!btn) return;
+
+  if (purpose === 'register' && regTimer) clearInterval(regTimer);
+  if (purpose === 'reset' && fpTimer) clearInterval(fpTimer);
+
+  let secondsLeft = 30;
+  btn.disabled = true;
+  btn.textContent = `Resend Code (${secondsLeft}s)`;
+
+  const interval = setInterval(() => {
+    secondsLeft--;
+    if (secondsLeft <= 0) {
+      clearInterval(interval);
+      btn.disabled = false;
+      btn.textContent = 'Resend Code';
+      if (purpose === 'register') regTimer = null;
+      if (purpose === 'reset') fpTimer = null;
+    } else {
+      btn.textContent = `Resend Code (${secondsLeft}s)`;
+    }
+  }, 1000);
+
+  if (purpose === 'register') regTimer = interval;
+  if (purpose === 'reset') fpTimer = interval;
+}
+
 window.switchAuthTab = function(tab) {
   document.getElementById('tab-login').classList.toggle('active', tab === 'login');
   document.getElementById('tab-register').classList.toggle('active', tab === 'register');
@@ -129,6 +170,8 @@ window.switchAuthTab = function(tab) {
   document.getElementById('register-otp-form').style.display = 'none';
   document.getElementById('forgot-password-form').style.display = 'none';
   
+  clearResendTimers();
+
   // Clear all fields and errors on tab switch
   document.getElementById('login-email').value    = '';
   document.getElementById('login-password').value = '';
@@ -188,11 +231,38 @@ window.handleRegisterSubmit = async function() {
     document.getElementById('reg-otp').value = '';
     
     showToast('OTP sent successfully! Please check your email.', 'success');
+    startResendTimer('reg-resend-btn', 'register');
   } catch (err) {
     errEl.textContent = 'Network error. Please try again.';
     errEl.classList.add('visible');
   } finally {
     btn.disabled = false; btn.textContent = 'Send Verification Code';
+  }
+};
+
+window.handleResendRegisterOTP = async function() {
+  if (!regTempData) return;
+  const btn = document.getElementById('reg-resend-btn');
+  const errEl = document.getElementById('reg-otp-error');
+  
+  errEl.classList.remove('visible');
+  btn.disabled = true; btn.textContent = 'Sending...';
+
+  try {
+    const res = await fetch('/api/auth/send-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email: regTempData.email })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.classList.add('visible'); btn.disabled = false; btn.textContent = 'Resend Code'; return; }
+    
+    showToast('Verification code resent successfully!', 'success');
+    startResendTimer('reg-resend-btn', 'register');
+  } catch {
+    errEl.textContent = 'Network error. Please try again.';
+    errEl.classList.add('visible');
+    btn.disabled = false; btn.textContent = 'Resend Code';
   }
 };
 
@@ -281,9 +351,36 @@ window.handleSendResetOTP = async function() {
     document.getElementById('fp-step1').style.display = 'none';
     document.getElementById('fp-step2').style.display = 'block';
     showToast('Reset code sent to your email. Check your inbox!', 'success');
+    startResendTimer('fp-resend-btn', 'reset');
   } catch {
     errEl.textContent = 'Network error. Please try again.';
     errEl.classList.add('visible');
+  }
+};
+
+window.handleResendResetOTP = async function() {
+  const email = document.getElementById('fp-email').value.trim();
+  const btn = document.getElementById('fp-resend-btn');
+  const errEl = document.getElementById('fp-reset-error');
+  
+  errEl.classList.remove('visible');
+  btn.disabled = true; btn.textContent = 'Sending...';
+
+  try {
+    const res = await fetch('/api/auth/send-reset-otp', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email })
+    });
+    const data = await res.json();
+    if (!res.ok) { errEl.textContent = data.error; errEl.classList.add('visible'); btn.disabled = false; btn.textContent = 'Resend Code'; return; }
+    
+    showToast('Verification code resent successfully!', 'success');
+    startResendTimer('fp-resend-btn', 'reset');
+  } catch {
+    errEl.textContent = 'Network error. Please try again.';
+    errEl.classList.add('visible');
+    btn.disabled = false; btn.textContent = 'Resend Code';
   }
 };
 
