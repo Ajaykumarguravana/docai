@@ -334,8 +334,8 @@ app.post('/api/analyze', authOptional, async (req, res) => {
     if (!text || text.trim().length < 50)
       return res.status(400).json({ error: 'Document text is too short or empty.' });
 
-    const truncated    = text.slice(0, 30000);
-    const wasTruncated = text.length > 30000;
+    const truncated    = text.slice(0, 1000000);
+    const wasTruncated = text.length > 1000000;
     const wordCount    = text.trim().split(/\s+/).length;
 
     const prompt = `
@@ -343,7 +343,7 @@ You are an expert document analyst. Analyze the following document and respond w
 
 {
   "docType": "Legal Contract | Financial Report | Research Paper | General Document",
-  "summary": "A clear, concise 4-6 sentence plain-language summary of the entire document.",
+  "summary": "A clear, concise 2-4 sentence plain-language summary of the entire document.",
   "keyFindings": [
     "Finding 1 (be specific and factual)",
     "Finding 2",
@@ -362,7 +362,7 @@ You are an expert document analyst. Analyze the following document and respond w
   }
 }
 
-${wasTruncated ? 'NOTE: The document was very large; only the first portion is analyzed.' : ''}
+${wasTruncated ? 'NOTE: The document was extremely large; only the first 1,000,000 characters were analyzed.' : ''}
 Document filename: ${filename}
 
 --- DOCUMENT START ---
