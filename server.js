@@ -323,6 +323,97 @@ app.get('/api/auth/me', authRequired, async (req, res) => {
   }
 });
 
+// PUT /api/auth/profile - Change Name
+app.put('/api/auth/profile', authRequired, async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Name is required.' });
+    }
+    
+    const result = await pool.query(
+      'UPDATE docai_users SET name=$1 WHERE id=$2 RETURNING id, name, email, created_at',
+      [name.trim(), req.user.id]
+    );
+    if (!result.rows.length) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    
+    res.json({ success: true, user: result.rows[0] });
+  } catch (err) {
+    console.error('Update profile error:', err);
+    res.status(500).json({ error: 'Failed to update profile name.' });
+  }
+});
+
+// PUT /api/auth/password - Change Password
+app.put('/api/auth/password', authRequired, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ error: 'Current password and new password are required.' });
+    }
+
+    // Get current hash
+    const userRes = await pool.query('SELECT password FROM docai_users WHERE id=$1', [req.user.id]);
+    if (!userRes.rows.length) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const user = userRes.rows[0];
+    const isValid = await bcrypt.compare(currentPassword, user.password);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Incorrect current password.' });
+    }
+
+    // Validate new password rules
+    if (newPassword.length < 8)
+      return res.status(400).json({ error: 'New password must be at least 8 characters.' });
+    if (!/[A-Z]/.test(newPassword))
+      return res.status(400).json({ error: 'New password must contain at least one capital letter.' });
+    if (!/[!@#$%^&*(),.?":{}|<>_\-+=~`[\]\\;\'\/]/.test(newPassword))
+      return res.status(400).json({ error: 'New password must contain at least one special character (e.g. @, #, !).' });
+
+    const hash = await bcrypt.hash(newPassword, 12);
+    await pool.query('UPDATE docai_users SET password=$1 WHERE id=$2', [hash, req.user.id]);
+
+    res.json({ success: true, message: 'Password changed successfully.' });
+  } catch (err) {
+    console.error('Change password error:', err);
+    res.status(500).json({ error: 'Failed to change password. Please try again.' });
+  }
+});
+
+// DELETE /api/auth/account - Delete Account Permanently
+app.delete('/api/auth/account', authRequired, async (req, res) => {
+  try {
+    const { password } = req.body;
+    if (!password) {
+      return res.status(400).json({ error: 'Password is required to confirm account deletion.' });
+    }
+
+    // Verify password
+    const userRes = await pool.query('SELECT password FROM docai_users WHERE id=$1', [req.user.id]);
+    if (!userRes.rows.length) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    const user = userRes.rows[0];
+    const isValid = await bcrypt.compare(password, user.password);
+    if (!isValid) {
+      return res.status(401).json({ error: 'Incorrect password. Account deletion canceled.' });
+    }
+
+    // Delete user (cascade will handle documents)
+    await pool.query('DELETE FROM docai_users WHERE id=$1', [req.user.id]);
+
+    res.json({ success: true, message: 'Account permanently deleted.' });
+  } catch (err) {
+    console.error('Delete account error:', err);
+    res.status(500).json({ error: 'Failed to delete account. Please try again.' });
+  }
+});
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // ANALYZE
 // ═══════════════════════════════════════════════════════════════════════════════
