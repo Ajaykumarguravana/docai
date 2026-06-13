@@ -573,3 +573,16 @@ body.light-theme .sidebar {
   background: rgba(241, 245, 249, 0.5);
 }
 
+/* ─── Premium Summary-Preview Grid Layout ────────────────────────────────────── */
+.summary-preview-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media(max-width:900px){
+  .summary-preview-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+

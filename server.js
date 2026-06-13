@@ -89,6 +89,9 @@ async function initDB() {
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
+  await pool.query('ALTER TABLE docai_documents ADD COLUMN IF NOT EXISTS doc_text TEXT');
+  await pool.query('ALTER TABLE docai_documents ADD COLUMN IF NOT EXISTS doc_image TEXT');
+  await pool.query('ALTER TABLE docai_documents ADD COLUMN IF NOT EXISTS doc_image_mime TEXT');
   await pool.query(`
     CREATE TABLE IF NOT EXISTS docai_otps (
       id         SERIAL PRIMARY KEY,
@@ -505,8 +508,8 @@ Respond with JSON only.`;
     let historyId = null;
     if (req.user) {
       const saved = await pool.query(
-        'INSERT INTO docai_documents (user_id, filename, doc_type, word_count, analysis) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-        [req.user.id, filename, analysis.docType || 'Unknown', wordCount, JSON.stringify(analysis)]
+        'INSERT INTO docai_documents (user_id, filename, doc_type, word_count, analysis, doc_text, doc_image, doc_image_mime) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id',
+        [req.user.id, filename, analysis.docType || 'Unknown', wordCount, JSON.stringify(analysis), text || null, image || null, mimeType || null]
       );
       historyId = saved.rows[0].id;
     }

@@ -1079,7 +1079,9 @@ async function loadHistoryDoc(id) {
     welcomeScreen.style.display  = 'none';
     analysisScreen.style.display = 'block';
     docFilename = doc.filename;
-    docText = ''; // no raw text from history
+    docText = doc.doc_text || '';
+    docImageBase64 = doc.doc_image || '';
+    docImageMimeType = doc.doc_image_mime || '';
 
     renderAnalysis(analysis, doc.filename, doc.word_count);
     setStatus('Loaded from history', 'var(--green)');
@@ -1279,6 +1281,27 @@ function renderAnalysis(data, filename, wordCount) {
   docMetaRow.innerHTML = `~${(wordCount||0).toLocaleString()} words${data.truncated ? '<span class="truncated-warn">⚠ Large doc — first portion analyzed</span>' : ''}${data.historyId ? '<span class="saved-badge">💾 Saved</span>' : ''}`;
 
   summaryText.textContent = data.summary || 'No summary available.';
+
+  // Render Preview Card content
+  const previewCard = document.getElementById('preview-card');
+  const previewImage = document.getElementById('preview-image');
+  const previewTextWrap = document.getElementById('preview-text-wrap');
+  
+  if (previewCard) {
+    if (docImageBase64) {
+      previewImage.src = `data:${docImageMimeType};base64,${docImageBase64}`;
+      previewImage.style.display = 'block';
+      previewTextWrap.style.display = 'none';
+      previewCard.style.display = 'flex';
+    } else if (docText && docText.trim()) {
+      previewTextWrap.textContent = docText;
+      previewTextWrap.style.display = 'block';
+      previewImage.style.display = 'none';
+      previewCard.style.display = 'flex';
+    } else {
+      previewCard.style.display = 'none';
+    }
+  }
 
   findingsList.innerHTML = '';
   (data.keyFindings || []).forEach(f => {
