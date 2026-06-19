@@ -182,16 +182,17 @@ main { flex:1; display:grid; grid-template-columns:380px 1fr; height:calc(100vh 
 .model-select:focus { border-color:var(--violet); }
 
 /* ─── Sidebar Tabs (Chat / History) ──────────────────────────────────────────── */
-.sidebar-tabs { display:flex; border-bottom:1px solid var(--border); border-top:1px solid var(--border); }
+.sidebar-tabs { display:flex; border-bottom:1px solid var(--border); border-top:1px solid var(--border); background: var(--bg2); }
 .sidebar-tab {
-  flex:1; padding:11px; text-align:center; font-size:.78rem; font-weight:600; cursor:pointer;
-  color:var(--text-3); border-bottom:2px solid transparent; transition:all .2s;
+  flex:1; padding:12px; text-align:center; font-size:.82rem; font-weight:600; cursor:pointer;
+  color:var(--text-2); border-bottom:2px solid transparent; transition:all .2s;
   display:flex; align-items:center; justify-content:center; gap:6px;
   background:none; border-top:none; border-left:none; border-right:none;
   font-family:'Inter',sans-serif;
 }
-.sidebar-tab:hover { color:var(--text-2); }
-.sidebar-tab.active { color:var(--violet-l); border-bottom-color:var(--violet); }
+.sidebar-tab:hover { color:var(--text); }
+.sidebar-tab.active { color:var(--text); border-bottom:3px solid var(--violet); font-weight:700; background: var(--glass-b); }
+body.light-theme .sidebar-tab.active { color: var(--violet); border-bottom-color: var(--violet); }
 .tab-badge {
   background:var(--violet); color:#fff; font-size:.6rem; font-weight:700;
   padding:1px 6px; border-radius:10px; min-width:18px; text-align:center;
@@ -453,7 +454,41 @@ main { flex:1; display:grid; grid-template-columns:380px 1fr; height:calc(100vh 
 /* ─── Responsive ─────────────────────────────────────────────────────────────── */
 @media(max-width:900px){
   main{grid-template-columns:1fr;grid-template-rows:auto 1fr;height:auto;}
-  .sidebar{border-right:none;border-bottom:1px solid var(--border);max-height:55vh;}
+  .sidebar{
+    border-right:none;
+    border-bottom:1px solid var(--border);
+    max-height:75vh;
+    min-height:520px;
+    height:auto;
+  }
+  .upload-section {
+    padding: 12px;
+  }
+  .upload-zone {
+    padding: 16px 12px;
+  }
+  .upload-zone h3 {
+    font-size: 0.82rem;
+  }
+  .upload-icon {
+    font-size: 1.6rem;
+    margin-bottom: 6px;
+  }
+  .model-select-wrap {
+    padding: 0 12px 10px;
+  }
+  
+  /* If a file is selected, hide the drag and drop box to free up space for Chat / History */
+  .upload-section:has(.file-info.visible) .upload-zone {
+    display: none;
+  }
+  
+  /* Make sidebar tabs taller and text clearer on mobile devices */
+  .sidebar-tab {
+    padding: 14px 10px;
+    font-size: 0.86rem;
+  }
+
   .results-panel{padding:18px;}
   .cards-grid{grid-template-columns:1fr;}
   .feature-grid{grid-template-columns:1fr 1fr;}
